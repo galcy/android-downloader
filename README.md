@@ -9,7 +9,7 @@
 
 使用方法如下：
 
-String urlString = "url";
+		String urlString = "url";
 		String localPath = Environment.getExternalStorageDirectory()
 				.getAbsolutePath() + "/local";
 		downloader = new Downloader(this, urlString, localPath,
