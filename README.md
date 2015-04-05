@@ -51,5 +51,8 @@
 			//重新下载
 			downloader.reset();
 demo：https://github.com/sungerk/downloader/blob/master/bin/MainActivity.apk	
+
+截图：
+![image](https://github.com/sungerk/downloader/blob/master/screenshots/Screenshot.png)
 	
 	
