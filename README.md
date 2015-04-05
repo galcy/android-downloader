@@ -9,7 +9,9 @@
 4.支持现在进度和下载速度（瞬时速度👍，不是平均速度）。
 
 使用方法：
-String urlString = "http://gdown.baidu.com/data/wisegame/7810ca9719335544/weibo_1790.apk";
+
+
+String urlString = "url";
 		String localPath = Environment.getExternalStorageDirectory()
 				.getAbsolutePath() + "/local";
 		downloader = new Downloader(this, urlString, localPath,
