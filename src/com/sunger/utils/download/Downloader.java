@@ -2,7 +2,6 @@ package com.sunger.utils.download;
 
 import java.text.DecimalFormat;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -12,99 +11,116 @@ import android.util.Log;
 /**
  * 将下载方法封装在此类 提供下载，暂停，删除，以及重置的方法
  */
-public class Downloader implements IRepsone {
+public class Downloader implements IRepsone, Handler.Callback {
 
-	private DownloadRequest mDownloadHttpTool;
-	private OnDownloadListener onDownloadListener;
-
+	private DownloadRequest httprequest;
 	private int total;
 	private int completeSize = 0;
+	//用户格式化下载速度的。
 	private DecimalFormat df = new DecimalFormat("######0.00");
 
-	@SuppressLint("HandlerLeak")
-	private Handler mHandler = new Handler() {
-		@Override
-		public void handleMessage(Message msg) {
-			super.handleMessage(msg);
-			switch (msg.what) {
-			case MsgState.DOWNLOAD_ERROT:
-				sendErrorMsg((String) msg.obj);
-				break;
-			case MsgState.DOWNLOAD_PROGRESS:
-				sendProgress((Integer) msg.obj);
-				break;
-			case MsgState.DOWNLOAD_SPEED:
-				sendSpeedMsg((Long) msg.obj);
-				break;
-			case MsgState.DOWNLOAD_FINISH:
-				sendFinishMsg((String) msg.obj);
-				break;
-			default:
-				break;
-			}
-		}
+	private WeakHandler mHandler = new WeakHandler(this);
+	private OnDownloadListener listener;
 
-	};
-
-	public Downloader(int threadCount, String filePath, String filename,
-			String urlString, Context context) {
-
-		mDownloadHttpTool = new DownloadRequest(threadCount, urlString,
-				filePath, filename, context, mHandler);
+	/**
+	 * 
+	 * @param context
+	 *            上下文
+	 * @param threadCount
+	 *            开启下载文件的线程数量
+	 * @param urlString
+	 *            文件url
+	 * @param filePath
+	 *            文件保存在sd卡的路径
+	 * @param filename
+	 *            文件名
+	 * @param listener
+	 *            下载监听
+	 */
+	public Downloader(Context context, int threadCount, String urlString,
+			String filePath, String filename, OnDownloadListener listener) {
+		this.listener = listener;
+		httprequest = new DownloadRequest(threadCount, urlString, filePath,
+				filename, context, mHandler);
 	}
 
-	// 下载之前首先异步线程调用ready方法获得文件大小信息，之后调用开始方法
+	/**
+	 * 默认开启五个线程下载
+	 * 
+	 * @param context
+	 *            上下文
+	 * @param urlString
+	 *            文件url
+	 * @param filePath
+	 *            文件保存在sd卡的路径
+	 * @param filename
+	 *            文件名
+	 * @param listener
+	 *            下载监听
+	 */
+	public Downloader(Context context, String urlString, String filePath,
+			String filename, OnDownloadListener listener) {
+		this(context, 5, urlString, filePath, filename, listener);
+	}
+
+	/**
+	 * 开始下载
+	 */
 	public void start() {
 		new AsyncTask<Void, Void, Void>() {
 
 			@Override
 			protected Void doInBackground(Void... arg0) {
-				mDownloadHttpTool.ready();
+				httprequest.ready();
 				return null;
 			}
 
 			@Override
 			protected void onPostExecute(Void result) {
 				super.onPostExecute(result);
-				total = mDownloadHttpTool.getFileSize();
-				completeSize = mDownloadHttpTool.getCompeleteSize();
+				total = httprequest.getFileSize();
+				completeSize = httprequest.getCompeleteSize();
 				Log.w("Tag", "downloadedSize::" + completeSize);
-				if (onDownloadListener != null) {
-					onDownloadListener.downloadStart();
+				if (listener != null) {
+					listener.onStart();
 				}
-				mDownloadHttpTool.start();
+				httprequest.start();
 			}
 		}.execute();
 	}
 
+	/**
+	 * 暂停下载
+	 */
 	public void pause() {
-		mDownloadHttpTool.pause();
+		httprequest.pause();
 	}
 
+	/**
+	 * 删除下载
+	 */
 	public void delete() {
-		mDownloadHttpTool.delete();
+		httprequest.delete();
 	}
 
+	/**
+	 * 重新下载
+	 */
 	public void reset() {
-		mDownloadHttpTool.delete();
+		httprequest.delete();
 		start();
-	}
-
-	public void setOnDownloadListener(OnDownloadListener onDownloadListener) {
-		this.onDownloadListener = onDownloadListener;
 	}
 
 	@Override
 	public void sendErrorMsg(String msg) {
-		onDownloadListener.downloadError(msg);
+		listener.onError(msg);
 	}
 
 	@Override
 	public void sendSpeedMsg(long used_time) {
 		if (used_time == 0)
 			return;
-		Log.d("下载所用时间", used_time + "");
-		double speed = mDownloadHttpTool.getOnceSize() / used_time;
+		double speed = httprequest.getOnceSize() / used_time * 1000;
 		String speedStr = "";
 		if (speed < 1024) {
 			speedStr = df.format(speed) + "B/s";
@@ -113,7 +129,7 @@ public class Downloader implements IRepsone {
 		} else {
 			speedStr = df.format(speed / 1024 / 1024) + "MB/s";
 		}
-		onDownloadListener.downloadSpeed(speedStr);
+		listener.onSpeed(speedStr);
 	}
 
 	@Override
@@ -121,17 +137,40 @@ public class Downloader implements IRepsone {
 		synchronized (this) {
 			completeSize += current_length;
 		}
-		int percent =(int) ((float) completeSize /(float) total * 100);
-		onDownloadListener.downloadProgress(percent, total, completeSize);
+		int percent = (int) ((float) completeSize / (float) total * 100);
+		listener.onProgress(percent, total, completeSize);
 		if (completeSize >= total) {
-			mDownloadHttpTool.compelete();
+			httprequest.compelete();
 			sendFinishMsg("文件下载完成");
 		}
 	}
 
 	@Override
 	public void sendFinishMsg(String msg) {
-		onDownloadListener.downloadFinish(msg);
+		listener.onFinish(msg);
+	}
+
+	@Override
+	public boolean handleMessage(Message msg) {
+		switch (msg.what) {
+		case MsgState.DOWNLOAD_ERROT:
+			sendErrorMsg((String) msg.obj);
+			break;
+		case MsgState.DOWNLOAD_PROGRESS:
+			sendProgress((Integer) msg.obj);
+			break;
+		case MsgState.DOWNLOAD_SPEED:
+
+			sendSpeedMsg((Long) msg.obj);
+			break;
+		case MsgState.DOWNLOAD_FINISH:
+			sendFinishMsg((String) msg.obj);
+			break;
+		default:
+			break;
+		}
+		return true;
+
 	}
 
 }

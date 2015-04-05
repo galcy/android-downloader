@@ -8,7 +8,7 @@ public abstract class OnDownloadListener {
 	/**
 	 * 下载开始
 	 */
-	public void downloadStart() {
+	public void onStart() {
 	}
 
 	/**
@@ -22,7 +22,7 @@ public abstract class OnDownloadListener {
 	 * @param completeSize
 	 *            已下载的文件大小
 	 */
-	public void downloadProgress(int percent, int total, int completeSize) {
+	public void onProgress(int percent, int total, int completeSize) {
 	}
 
 	/**
@@ -31,14 +31,14 @@ public abstract class OnDownloadListener {
 	 * @param msg
 	 *            完成的消息：两种情况：1.下载成功，2.文件已经存在
 	 */
-	public abstract void downloadFinish(String msg);
+	public abstract void onFinish(String msg);
 
 	/**
 	 * 下载实时速度
 	 * 
 	 * @param speed
 	 */
-	public void downloadSpeed(String speed) {
+	public void onSpeed(String speed) {
 	}
 
 	/**
@@ -47,5 +47,5 @@ public abstract class OnDownloadListener {
 	 * @param msg
 	 *            错误消息
 	 */
-	public abstract void downloadError(String msg);
+	public abstract void onError(String msg);
 }

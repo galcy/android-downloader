@@ -10,10 +10,10 @@ import android.database.sqlite.SQLiteDatabase;
  * 
  * 数据库操作工具类
  */
-public class DownlaodDao {
+public class Dao {
     private DownLoadHelper dbHelper;
 
-    public DownlaodDao(Context context) {
+    public Dao(Context context) {
         dbHelper = new DownLoadHelper(context);
     }
 

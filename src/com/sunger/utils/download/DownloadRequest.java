@@ -1,6 +1,7 @@
 package com.sunger.utils.download;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
@@ -9,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.content.Context;
-import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
@@ -24,13 +24,14 @@ public class DownloadRequest implements IRepsone {
 	private int threadCount;// 线程数量
 	private String urlstr;// URL地址
 	private Context mContext;
-	private Handler mHandler;
+	//使用WeakHandler防止内存泄漏
+	private WeakHandler mHandler;
 	private List<DownloadEntity> downloadInfos;// 保存下载信息的类
 
 	private String localPath;// 目录
 	private String fileName;// 文件名
 	private int fileSize;
-	private DownlaodDao sqlTool;// 文件信息保存的数据库操作类
+	private Dao dao;// 文件信息保存的数据库操作类
 
 	public int getOnceSize() {
 		return onceSize;
@@ -41,7 +42,7 @@ public class DownloadRequest implements IRepsone {
 	}
 
 	/**
-	 * 一次写入的数据
+	 * 一次写入的数据，默认写入4k，如果一次写入文件太小，写入时间容易出错
 	 */
 	private int onceSize = 1024 * 4;
 
@@ -54,7 +55,7 @@ public class DownloadRequest implements IRepsone {
 	private int globalCompelete = 0;
 
 	public DownloadRequest(int threadCount, String urlString, String localPath,
-			String fileName, Context context, Handler handler) {
+			String fileName, Context context, WeakHandler handler) {
 		super();
 		this.threadCount = threadCount;
 		this.urlstr = urlString;
@@ -62,20 +63,22 @@ public class DownloadRequest implements IRepsone {
 		this.mContext = context;
 		this.mHandler = handler;
 		this.fileName = fileName;
-		sqlTool = new DownlaodDao(mContext);
+		dao = new Dao(mContext);
 	}
 
-	// 在开始下载之前需要调用ready方法进行配置
+	/**
+	 * 在开始下载之前需要调用ready方法进行配置,主要用于初始化每个线程下载长度的
+	 */
 	public void ready() {
 		Log.w(TAG, "ready");
 		globalCompelete = 0;
-		downloadInfos = sqlTool.getInfos(urlstr);
+		downloadInfos = dao.getInfos(urlstr);
 		if (downloadInfos.size() == 0) {
 			initFirst();
 		} else {
 			File file = new File(localPath + "/" + fileName);
 			if (!file.exists()) {
-				sqlTool.delete(urlstr);
+				dao.delete(urlstr);
 				initFirst();
 			} else {
 				fileSize = downloadInfos.get(downloadInfos.size() - 1)
@@ -88,6 +91,9 @@ public class DownloadRequest implements IRepsone {
 		}
 	}
 
+	/**
+	 * 开始下载
+	 */
 	public void start() {
 		Log.w(TAG, "start");
 		if (downloadInfos != null) {
@@ -104,60 +110,107 @@ public class DownloadRequest implements IRepsone {
 		}
 	}
 
+	/**
+	 * 暂停下载
+	 */
 	public void pause() {
 		state = Download_State.Pause;
-		sqlTool.closeDb();
+		dao.closeDb();
 	}
 
+	/**
+	 * 删除下载
+	 */
 	public void delete() {
 		compelete();
 		File file = new File(localPath + "/" + fileName);
 		file.delete();
 	}
 
+	/**
+	 * 结束下载
+	 */
 	public void compelete() {
-		sqlTool.delete(urlstr);
-		sqlTool.closeDb();
+		dao.delete(urlstr);
+		dao.closeDb();
 	}
 
+	/**
+	 * 获取文件大小
+	 * 
+	 * @return
+	 */
 	public int getFileSize() {
 		return fileSize;
 	}
 
+	/**
+	 * 获取已经下载完成的长度
+	 * 
+	 * @return
+	 */
 	public int getCompeleteSize() {
 		return globalCompelete;
 	}
 
-	// 第一次下载初始化
+	private File createFile() {
+		File fileParent = new File(localPath);
+		// 判断文件夹是否存在，如果不存在则创建目录，支持多极目录
+		if (!fileParent.exists()) {
+			// 文件夹创建失败
+			if (!fileParent.mkdirs()) {
+				sendErrorMsg("请检测您的sd卡");
+				return null;
+			}
+		}
+		File file = new File(fileParent, fileName);
+		if (!file.exists()) {
+			try {
+				if (!file.createNewFile()) {
+					// 文件创建失败
+					sendErrorMsg("请检测您的sd卡");
+					return null;
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+				sendErrorMsg("创建文件失败");
+			}
+		} else {
+			// 文件已经存在，并且没有下载记录
+			sendFinishMsg("文件已经存在");
+			return null;
+		}
+		return file;
+
+	}
+
+	/**
+	 * 第一次下载初始化,判断文件是否已经存在和获取文件大小
+	 */
 	private void initFirst() {
 		Log.w(TAG, "initFirst");
+
+		File file = createFile();
+		if (file == null)
+			return;
+		HttpURLConnection connection = null;
 		try {
 			URL url = new URL(urlstr);
-			HttpURLConnection connection = (HttpURLConnection) url
-					.openConnection();
+			connection = (HttpURLConnection) url.openConnection();
 			connection.setConnectTimeout(5000);
 			connection.setRequestMethod("GET");
 			fileSize = connection.getContentLength();
 			Log.w(TAG, "fileSize::" + fileSize);
-			File fileParent = new File(localPath);
-			if (!fileParent.exists()) {
-				fileParent.mkdir();
-			}
-			File file = new File(fileParent, fileName);
-			if (!file.exists()) {
-				file.createNewFile();
-			} else {
-				// 文件已经存在，并且没有下载记录
-				sendFinishMsg("文件已经存在");
-				return;
-			}
-			// 本地访问文件
 			RandomAccessFile accessFile = new RandomAccessFile(file, "rwd");
 			accessFile.setLength(fileSize);
 			accessFile.close();
-			connection.disconnect();
-		} catch (Exception e) {
+		} catch (IOException e) {
+			sendErrorMsg("初始化下载错误");
 			e.printStackTrace();
+		} finally {
+			if (connection != null) {
+				connection.disconnect();
+			}
 		}
 		int range = fileSize / threadCount;
 		downloadInfos = new ArrayList<DownloadEntity>();
@@ -169,7 +222,7 @@ public class DownloadRequest implements IRepsone {
 		DownloadEntity info = new DownloadEntity(threadCount - 1,
 				(threadCount - 1) * range, fileSize - 1, 0, urlstr);
 		downloadInfos.add(info);
-		sqlTool.insertInfos(downloadInfos);
+		dao.insertInfos(downloadInfos);
 	}
 
 	// 自定义下载线程
@@ -217,8 +270,8 @@ public class DownloadRequest implements IRepsone {
 					sendSpeedMsg(current_time - time);
 					time = current_time;
 					sendProgress(length);
-					compeleteSize+=length;
-					sqlTool.updataInfos(threadId, compeleteSize, urlstr);
+					compeleteSize += length;
+					dao.updataInfos(threadId, compeleteSize, urlstr);
 					Log.w(TAG, "Threadid::" + threadId + "    compelete::"
 							+ compeleteSize + "    total::" + totalThreadSize);
 					if (compeleteSize >= totalThreadSize) {
@@ -231,15 +284,19 @@ public class DownloadRequest implements IRepsone {
 
 			} catch (Exception e) {
 				e.printStackTrace();
+				sendErrorMsg("文件下载错误");
+
 			} finally {
 				try {
-					if (is != null) {
+					if (is != null)
 						is.close();
-					}
-					randomAccessFile.close();
-					connection.disconnect();
+					if (randomAccessFile != null)
+						randomAccessFile.close();
+					if (connection != null)
+						connection.disconnect();
 				} catch (Exception e) {
 					e.printStackTrace();
+					sendErrorMsg("下载错误");
 				}
 			}
 		}
@@ -255,8 +312,14 @@ public class DownloadRequest implements IRepsone {
 		sendResponeMsg(MsgState.DOWNLOAD_ERROT, msg);
 	}
 
+	private long start_time = System.currentTimeMillis();
+
 	@Override
 	public void sendSpeedMsg(long used_time) {
+		long current_time = System.currentTimeMillis();
+		if (current_time - start_time < 1000)
+			return;
+		start_time = current_time;
 		sendResponeMsg(MsgState.DOWNLOAD_SPEED, used_time);
 	}
 
@@ -266,8 +329,6 @@ public class DownloadRequest implements IRepsone {
 	}
 
 	private void sendResponeMsg(int state, Object msg) {
-		if (mHandler == null)
-			return;
 		Message message = Message.obtain();
 		message.what = state;
 		message.obj = msg;
