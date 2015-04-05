@@ -9,12 +9,10 @@
 4.支持现在进度和下载速度（瞬时速度👍，不是平均速度）。
 
 使用方法：
-//文件下载地址
 String urlString = "http://gdown.baidu.com/data/wisegame/7810ca9719335544/weibo_1790.apk";
-//文件绝对路径
-String localPath = Environment.getExternalStorageDirectory()
+		String localPath = Environment.getExternalStorageDirectory()
 				.getAbsolutePath() + "/local";
-Downloader	downloader = new Downloader(this, urlString, localPath,
+		downloader = new Downloader(this, urlString, localPath,
 				"weibo_1790.apk", new OnDownloadListener() {
 
 					@Override
@@ -30,25 +28,44 @@ Downloader	downloader = new Downloader(this, urlString, localPath,
 					@Override
 					public void onProgress(int percent, int total,
 							int completeSize) {
-					
+						mProgressBar.setProgress(percent);
+						tv_total.setText(completeSize + "/" + total);
 					}
 
 					@Override
 					public void onSpeed(String speed) {
-				
+						super.onSpeed(speed);
+						tv_speed.setText("下载速度" + speed);
 
 					}
 
-});
-//开始下载
-downloader.start();
-//暂停下载
-downloader.pause();
-//删除下载
-downloader.delete();
-//重新下载
-downloader.reset();
+				});
 
+		start.setOnClickListener(new OnClickListener() {
 
+			@Override
+			public void onClick(View arg0) {
+				downloader.start();
+			}
+		});
+		pause.setOnClickListener(new OnClickListener() {
 
+			@Override
+			public void onClick(View arg0) {
+				downloader.pause();
+			}
+		});
+		delete.setOnClickListener(new OnClickListener() {
 
+			@Override
+			public void onClick(View arg0) {
+				downloader.delete();
+			}
+		});
+		reset.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View arg0) {
+				downloader.reset();
+			}
+		});
