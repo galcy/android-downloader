@@ -1,11 +1,13 @@
 这是一个基于HttpURLConnection网络请求和sqlite3数据存储的文件下载库。
 主要有以下功能：
 
-1.使用开源库android-weak-handler解决handler内存泄漏问题。
+1.使用开源库android-weak-handler解决handler内存泄漏问题；
 
-2.支持断电续传（实时保存下载信息），暂停下载，重新下载，删除下载。
+2.支持断电续传（实时保存下载信息），暂停下载，重新下载，删除下载；
 
-3.支持下载速度和文件下载进度实时回调。
+3.支持下载速度和文件下载进度实时回调；
+
+4.支持自动创建多级目录；
 
 使用方法如下：
 
@@ -40,33 +42,12 @@
 					}
 
 				});
-		
-
-		start.setOnClickListener(new OnClickListener() {
-
-			@Override
-			public void onClick(View arg0) {
-				downloader.start();
-			}
-		});
-		pause.setOnClickListener(new OnClickListener() {
-
-			@Override
-			public void onClick(View arg0) {
-				downloader.pause();
-			}
-		});
-		delete.setOnClickListener(new OnClickListener() {
-
-			@Override
-			public void onClick(View arg0) {
-				downloader.delete();
-			}
-		});
-		reset.setOnClickListener(new OnClickListener() {
-
-			@Override
-			public void onClick(View arg0) {
-				downloader.reset();
-			}
-		});
+			//开始下载
+			downloader.start();
+			//暂停下载
+			downloader.pause();
+			//删除下载
+			downloader.delete();
+			//重新下载
+			downloader.reset();
+	
