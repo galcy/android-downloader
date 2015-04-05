@@ -10,8 +10,7 @@
 
 使用方法：
 
-
-String urlString = "url";
+	String urlString = "url";
 		String localPath = Environment.getExternalStorageDirectory()
 				.getAbsolutePath() + "/local";
 		downloader = new Downloader(this, urlString, localPath,
@@ -71,3 +70,4 @@ String urlString = "url";
 				downloader.reset();
 			}
 		});
+
