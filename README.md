@@ -50,4 +50,6 @@
 			downloader.delete();
 			//重新下载
 			downloader.reset();
+demo：https://github.com/sungerk/downloader/blob/master/bin/MainActivity.apk	
+	
 	
