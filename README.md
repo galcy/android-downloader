@@ -1,9 +1,11 @@
+#android-downloader
 这是一个基于HttpURLConnection网络请求和sqlite3数据存储的文件下载库。
-主要有以下功能：
+
+#主要有以下功能： 
 
 1.使用开源库android-weak-handler解决handler内存泄漏问题；
 
-2.支持断电续传（实时保存下载信息），暂停下载，重新下载，删除下载；
+2.支持断点续传（实时保存下载信息），暂停下载，重新下载，删除下载；
 
 3.支持下载速度和文件下载进度实时回调；
 
@@ -43,13 +45,13 @@
 
 				});
 			//开始下载
-			downloader.start();
+			#downloader.start();
 			//暂停下载
-			downloader.pause();
+		       	#downloader.pause();
 			//删除下载
-			downloader.delete();
+			#downloader.delete();
 			//重新下载
-			downloader.reset();
+			#downloader.reset();
 demo：https://github.com/sungerk/downloader/blob/master/bin/MainActivity.apk	
 
 截图：
