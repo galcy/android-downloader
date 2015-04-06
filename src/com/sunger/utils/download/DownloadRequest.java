@@ -42,7 +42,7 @@ public class DownloadRequest implements IRepsone {
 	}
 
 	/**
-	 * 一次写入的数据，默认写入4k，如果一次写入文件太小，写入时间容易出错
+	 * 一次写入的数据，默认写入4k，如果一次写入文件太小，写入一次时间计算容易出错
 	 */
 	private int onceSize = 1024 * 4;
 
